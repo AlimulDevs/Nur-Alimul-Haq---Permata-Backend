@@ -4,7 +4,7 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 2 — development
@@ -12,6 +12,7 @@ RUN npm ci
 FROM base AS development
 COPY . .
 CMD ["npm", "run", "start:dev"]
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 3 — builder (compile TypeScript)
@@ -30,7 +31,7 @@ ENV NODE_ENV=production
 
 # Install only production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --legacy-peer-deps && npm cache clean --force
 
 # Copy compiled output
 COPY --from=builder /app/dist ./dist

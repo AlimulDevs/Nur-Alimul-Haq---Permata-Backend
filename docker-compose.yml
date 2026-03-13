@@ -1,9 +1,8 @@
-version: '3.9'
-
 services:
   # ─── MSSQL Database ────────────────────────────────────────────────────────
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
     container_name: bookstore_mssql
     restart: unless-stopped
     environment:
@@ -31,6 +30,7 @@ services:
   # ─── MSSQL DB Initializer (creates the database) ──────────────────────────
   mssql-init:
     image: mcr.microsoft.com/mssql-tools:latest
+    platform: linux/amd64
     container_name: bookstore_mssql_init
     depends_on:
       mssql:
@@ -56,6 +56,8 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      DB_HOST: mssql
+      DB_PORT: "1433"
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:

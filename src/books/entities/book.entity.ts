@@ -36,7 +36,7 @@ export class Book {
 
   @ManyToOne(() => Author, (author) => author.books, {
     eager: false,
-    onDelete: 'RESTRICT',
+    onDelete: 'NO ACTION', // MSSQL equivalent of RESTRICT
   })
   @JoinColumn({ name: 'author_id' })
   author: Author;

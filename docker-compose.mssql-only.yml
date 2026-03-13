@@ -1,0 +1,50 @@
+# MSSQL-only Docker Compose
+# Runs ONLY the database in Docker — NestJS runs locally via:
+#   npm run start:dev
+#
+# Usage:
+#   docker-compose -f docker-compose.mssql-only.yml up -d
+#   npm run start:dev
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    container_name: bookstore_mssql
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${DB_PASSWORD}"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -Q 'SELECT 1' -C || exit 1"
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  mssql-init:
+    image: mcr.microsoft.com/mssql-tools:latest
+    platform: linux/amd64
+    container_name: bookstore_mssql_init
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: "${DB_PASSWORD}"
+      DB_NAME: "${DB_DATABASE}"
+    volumes:
+      - ./docker/mssql/init.sh:/init.sh
+    command: bash /init.sh
+
+volumes:
+  mssql_data:
+    driver: local

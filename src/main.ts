@@ -45,7 +45,8 @@ async function bootstrap() {
   app.useGlobalGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector));
 
   // ── Swagger / OpenAPI ──────────────────────────────────────────────────────
-  if (nodeEnv !== 'production') {
+  // Always enabled — disable only if SWAGGER_DISABLED=true
+  if (configService.get<string>('SWAGGER_DISABLED') !== 'true') {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('Bookstore API')
       .setDescription(
