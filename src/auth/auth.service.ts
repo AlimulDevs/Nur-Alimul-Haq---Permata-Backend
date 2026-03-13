@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { UsersService } from '@/users/users.service';
+import { UsersRepository } from '@/users/users.repository';
 import { UserRole } from '@/users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -28,13 +28,13 @@ export class AuthService {
   private readonly SALT_ROUNDS = 12;
 
   constructor(
-    private readonly usersService: UsersService,
+    private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
     // 409 — duplicate email
-    const exists = await this.usersService.existsByEmail(dto.email);
+    const exists = await this.usersRepository.existsByEmail(dto.email);
     if (exists) {
       throw new ConflictException({
         error: {
@@ -46,7 +46,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
 
-    const user = await this.usersService.create({
+    const user = await this.usersRepository.create({
       email: dto.email.toLowerCase().trim(),
       password: hashedPassword,
       fullName: dto.fullName,
@@ -57,7 +57,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
-    const user = await this.usersService.findByEmail(
+    const user = await this.usersRepository.findByEmail(
       dto.email.toLowerCase().trim(),
     );
 
