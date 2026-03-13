@@ -1,0 +1,77 @@
+version: '3.9'
+
+services:
+  # ─── MSSQL Database ────────────────────────────────────────────────────────
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: bookstore_mssql
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${DB_PASSWORD}"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+      - ./docker/mssql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -Q 'SELECT 1' -C || exit 1"
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - bookstore_net
+
+  # ─── MSSQL DB Initializer (creates the database) ──────────────────────────
+  mssql-init:
+    image: mcr.microsoft.com/mssql-tools:latest
+    container_name: bookstore_mssql_init
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: "${DB_PASSWORD}"
+      DB_NAME: "${DB_DATABASE}"
+    volumes:
+      - ./docker/mssql/init.sh:/init.sh
+    command: bash /init.sh
+    networks:
+      - bookstore_net
+
+  # ─── NestJS Application ───────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: bookstore_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      mssql:
+        condition: service_healthy
+      mssql-init:
+        condition: service_completed_successfully
+    networks:
+      - bookstore_net
+
+  # ─── Development override (optional, use docker-compose.dev.yml) ──────────
+
+volumes:
+  mssql_data:
+    driver: local
+
+networks:
+  bookstore_net:
+    driver: bridge

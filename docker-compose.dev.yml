@@ -1,0 +1,21 @@
+version: '3.9'
+
+# Development override — run with:
+#   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  mssql:
+    ports:
+      - "1433:1433"
+
+  api:
+    build:
+      target: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run start:dev
+    environment:
+      NODE_ENV: development
+    ports:
+      - "${APP_PORT:-3000}:3000"
