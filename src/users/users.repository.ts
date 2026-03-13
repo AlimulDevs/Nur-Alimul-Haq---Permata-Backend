@@ -1,30 +1,40 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { User } from '@prisma/client';
+import { PrismaService } from '@/prisma/prisma.service';
+import { UserRole } from './entities/user.entity';
+
+export interface CreateUserData {
+  email: string;
+  password: string;
+  fullName: string;
+  role?: UserRole;
+}
 
 @Injectable()
 export class UsersRepository {
-  constructor(
-    @InjectRepository(User)
-    private readonly repo: Repository<User>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.repo.findOne({ where: { email } });
+    return this.prisma.user.findUnique({ where: { email } });
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.repo.findOne({ where: { id } });
+    return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async create(data: Partial<User>): Promise<User> {
-    const user = this.repo.create(data);
-    return this.repo.save(user);
+  async create(data: CreateUserData): Promise<User> {
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        password: data.password,
+        fullName: data.fullName,
+        role: data.role ?? 'customer',
+      },
+    });
   }
 
   async existsByEmail(email: string): Promise<boolean> {
-    const count = await this.repo.count({ where: { email } });
+    const count = await this.prisma.user.count({ where: { email } });
     return count > 0;
   }
 }

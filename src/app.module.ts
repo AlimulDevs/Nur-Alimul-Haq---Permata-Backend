@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { typeOrmAsyncConfig } from '@/config/database.config';
+import { PrismaModule } from '@/prisma/prisma.module';
 import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
@@ -20,8 +19,8 @@ import { BooksModule } from '@/books/books.module';
       envFilePath: '.env',
     }),
 
-    // ── Database ───────────────────────────────────────────────────────────
-    TypeOrmModule.forRootAsync(typeOrmAsyncConfig),
+    // ── Database (Prisma) ──────────────────────────────────────────────────
+    PrismaModule,
 
     // ── Feature modules ────────────────────────────────────────────────────
     AuthModule,

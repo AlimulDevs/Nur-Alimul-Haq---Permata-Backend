@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+// Note: MSSQL does not support Prisma enums.
+// The `role` field uses String with a default value of "customer".
+// Application-level validation enforces valid values ("admin" | "customer").
+
+model User {
+  id        String   @id @default(uuid()) @db.UniqueIdentifier
+  email     String   @unique @db.NVarChar(255)
+  password  String   @db.NVarChar(255)
+  fullName  String   @map("full_name") @db.NVarChar(255)
+  role      String   @default("customer") @db.NVarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model Author {
+  id        String  @id @default(uuid()) @db.UniqueIdentifier
+  name      String  @db.NVarChar(255)
+  bio       String? @db.NVarChar(Max)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  books Book[]
+
+  @@map("authors")
+}
+
+model Book {
+  id            String    @id @default(uuid()) @db.UniqueIdentifier
+  title         String    @db.NVarChar(500)
+  authorId      String    @map("author_id") @db.UniqueIdentifier
+  isbn          String    @unique @db.NVarChar(20)
+  price         Decimal   @db.Decimal(12, 2)
+  stock         Int       @default(0)
+  publishedDate DateTime? @map("published_date") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  author Author @relation(fields: [authorId], references: [id])
+
+  @@map("books")
+}

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { UsersRepository } from './users.repository';
-import { User } from './entities/user.entity';
+import { UsersRepository, CreateUserData } from './users.repository';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -14,7 +14,7 @@ export class UsersService {
     return this.usersRepository.findById(id);
   }
 
-  async create(data: Partial<User>): Promise<User> {
+  async create(data: CreateUserData): Promise<User> {
     return this.usersRepository.create(data);
   }
 

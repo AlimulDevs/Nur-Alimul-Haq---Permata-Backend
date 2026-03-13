@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Book } from './entities/book.entity';
+import { Book, Prisma } from '@prisma/client';
+import { PrismaService } from '@/prisma/prisma.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { FilterBookDto } from './dto/filter-book.dto';
+
+export type BookWithAuthor = Prisma.BookGetPayload<{ include: { author: true } }>;
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -18,12 +19,9 @@ export interface PaginatedResult<T> {
 
 @Injectable()
 export class BooksRepository {
-  constructor(
-    @InjectRepository(Book)
-    private readonly repo: Repository<Book>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(filter: FilterBookDto): Promise<PaginatedResult<Book>> {
+  async findAll(filter: FilterBookDto): Promise<PaginatedResult<BookWithAuthor>> {
     const {
       authorId,
       q,
@@ -33,31 +31,28 @@ export class BooksRepository {
       limit = 10,
     } = filter;
 
-    const qb = this.repo
-      .createQueryBuilder('book')
-      .leftJoinAndSelect('book.author', 'author')
-      .orderBy('book.createdAt', 'DESC');
+    const where: Prisma.BookWhereInput = {};
 
-    if (authorId) {
-      qb.andWhere('book.author_id = :authorId', { authorId });
-    }
-
-    if (q) {
-      qb.andWhere('LOWER(book.title) LIKE LOWER(:q)', { q: `%${q}%` });
-    }
-
-    if (minPrice !== undefined) {
-      qb.andWhere('book.price >= :minPrice', { minPrice });
-    }
-
-    if (maxPrice !== undefined) {
-      qb.andWhere('book.price <= :maxPrice', { maxPrice });
+    if (authorId) where.authorId = authorId;
+    if (q) where.title = { contains: q };
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined) (where.price as Prisma.DecimalFilter).gte = minPrice;
+      if (maxPrice !== undefined) (where.price as Prisma.DecimalFilter).lte = maxPrice;
     }
 
     const skip = (page - 1) * limit;
-    qb.skip(skip).take(limit);
 
-    const [data, total] = await qb.getManyAndCount();
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.book.findMany({
+        where,
+        include: { author: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.book.count({ where }),
+    ]);
 
     return {
       data,
@@ -70,42 +65,49 @@ export class BooksRepository {
     };
   }
 
-  async findById(id: string): Promise<Book | null> {
-    return this.repo.findOne({
+  async findById(id: string): Promise<BookWithAuthor | null> {
+    return this.prisma.book.findUnique({
       where: { id },
-      relations: ['author'],
+      include: { author: true },
     });
   }
 
   async findByIsbn(isbn: string): Promise<Book | null> {
-    return this.repo.findOne({ where: { isbn } });
+    return this.prisma.book.findUnique({ where: { isbn } });
   }
 
-  async create(dto: CreateBookDto): Promise<Book> {
-    const book = this.repo.create({
-      title: dto.title,
-      authorId: dto.authorId,
-      isbn: dto.isbn,
-      price: dto.price,
-      stock: dto.stock,
-      publishedDate: dto.publishedDate ? new Date(dto.publishedDate) : null,
+  async create(dto: CreateBookDto): Promise<BookWithAuthor> {
+    return this.prisma.book.create({
+      data: {
+        title: dto.title,
+        authorId: dto.authorId,
+        isbn: dto.isbn,
+        price: dto.price,
+        stock: dto.stock ?? 0,
+        publishedDate: dto.publishedDate ? new Date(dto.publishedDate) : null,
+      },
+      include: { author: true },
     });
-    return this.repo.save(book);
   }
 
-  async update(book: Book, dto: UpdateBookDto): Promise<Book> {
-    if (dto.title !== undefined) book.title = dto.title;
-    if (dto.authorId !== undefined) book.authorId = dto.authorId;
-    if (dto.isbn !== undefined) book.isbn = dto.isbn;
-    if (dto.price !== undefined) book.price = dto.price;
-    if (dto.stock !== undefined) book.stock = dto.stock;
-    if (dto.publishedDate !== undefined) {
-      book.publishedDate = dto.publishedDate ? new Date(dto.publishedDate) : null;
-    }
-    return this.repo.save(book);
+  async update(book: Book, dto: UpdateBookDto): Promise<BookWithAuthor> {
+    return this.prisma.book.update({
+      where: { id: book.id },
+      data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.authorId !== undefined && { authorId: dto.authorId }),
+        ...(dto.isbn !== undefined && { isbn: dto.isbn }),
+        ...(dto.price !== undefined && { price: dto.price }),
+        ...(dto.stock !== undefined && { stock: dto.stock }),
+        ...(dto.publishedDate !== undefined && {
+          publishedDate: dto.publishedDate ? new Date(dto.publishedDate) : null,
+        }),
+      },
+      include: { author: true },
+    });
   }
 
   async delete(book: Book): Promise<void> {
-    await this.repo.remove(book);
+    await this.prisma.book.delete({ where: { id: book.id } });
   }
 }

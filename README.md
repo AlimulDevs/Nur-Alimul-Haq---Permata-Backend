@@ -1,252 +1,368 @@
-# Bookstore API
+# 📚 Bookstore API
 
-A production-ready RESTful API for a Bookstore Management System built with **NestJS**, **TypeScript**, and **MSSQL** (via Docker).
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Node.js 20 (Alpine) |
-| Language | TypeScript 5 |
-| Framework | NestJS 10 |
-| Database | Microsoft SQL Server 2022 (Docker) |
-| ORM | TypeORM 0.3 |
-| Auth | JWT (passport-jwt) + bcrypt |
-| Docs | Swagger / OpenAPI 3 |
-| Container | Docker, Docker Compose |
+RESTful API untuk manajemen toko buku — dibangun dengan **NestJS v11**, **Prisma v6 (ORM)**, **MSSQL 2022**, dan **Docker**.
 
 ---
 
-## Architecture
+## 🚀 Tech Stack
+
+| Layer        | Tech                                  |
+|-------------|---------------------------------------|
+| Framework   | NestJS v11 (TypeScript)               |
+| ORM         | Prisma v6                             |
+| Database    | Microsoft SQL Server 2022             |
+| Auth        | JWT + Passport (passport-jwt v4)      |
+| Docs        | Swagger / OpenAPI (`@nestjs/swagger`) |
+| Container   | Docker + Docker Compose               |
+
+---
+
+## 📁 Struktur Proyek
 
 ```
-Clean Architecture pattern:
-Controller → Service → Repository → Entity
-```
-
-```
-src/
-├── app.module.ts               # Root module
-├── main.ts                     # Bootstrap / Swagger / Global setup
-├── config/
-│   └── database.config.ts      # TypeORM async config
-├── common/
-│   ├── decorators/
-│   │   ├── current-user.decorator.ts
-│   │   ├── public.decorator.ts
-│   │   └── roles.decorator.ts
-│   ├── filters/
-│   │   └── http-exception.filter.ts  # Global error format
-│   └── guards/
-│       ├── jwt-auth.guard.ts
-│       └── roles.guard.ts
-├── auth/
-│   ├── auth.controller.ts
-│   ├── auth.service.ts
-│   ├── auth.module.ts
-│   ├── dto/
-│   └── strategies/jwt.strategy.ts
-├── users/
-│   ├── entities/user.entity.ts
-│   ├── users.repository.ts
-│   ├── users.service.ts
-│   └── users.module.ts
-├── authors/
-│   ├── entities/author.entity.ts
-│   ├── authors.repository.ts
-│   ├── authors.service.ts
-│   ├── authors.controller.ts
-│   └── authors.module.ts
-├── books/
-│   ├── entities/book.entity.ts
-│   ├── books.repository.ts
-│   ├── books.service.ts
-│   ├── books.controller.ts
-│   └── books.module.ts
-└── database/
-    └── seeds/admin.seed.ts
+bookstore-api/
+├── prisma/
+│   ├── schema.prisma          # Prisma schema (models & enum)
+│   └── migrations/            # Migration files (auto-generated)
+├── src/
+│   ├── auth/                  # JWT Auth (register, login)
+│   ├── books/                 # Books CRUD + filter & pagination
+│   ├── authors/               # Authors CRUD
+│   ├── users/                 # Users service & repository
+│   ├── prisma/                # PrismaService & PrismaModule
+│   └── common/                # Guards, filters, decorators
+├── docker/
+│   ├── mssql/                 # DB init scripts
+│   └── entrypoint.sh          # Runs migrations → starts app
+├── docker-compose.yml             # Full Docker stack
+├── docker-compose.mssql-only.yml  # MSSQL-only (untuk local dev)
+├── Dockerfile                 # Multi-stage build
+└── .env                       # Local environment variables
 ```
 
 ---
 
-## Quick Start
+## ⚙️ Environment Variables
 
-### Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
-- [Node.js 20+](https://nodejs.org/) (for local dev and seeder)
-
----
-
-### 1. Clone & configure environment
+Copy `.env.example` → `.env`:
 
 ```bash
 cp .env.example .env
-# Edit .env if needed — defaults work out of the box for local dev
 ```
+
+| Variable            | Default                    | Keterangan                         |
+|--------------------|----------------------------|------------------------------------|
+| `APP_PORT`         | `3000`                     | Port aplikasi                      |
+| `NODE_ENV`         | `development`              | `development` / `production`       |
+| `SWAGGER_DISABLED` | `false`                    | Set `true` untuk disable Swagger   |
+| `JWT_SECRET`       | *(change this!)*           | Secret key JWT min 32 karakter     |
+| `JWT_EXPIRES_IN`   | `1d`                       | Durasi token JWT                   |
+| `DATABASE_URL`     | `sqlserver://localhost:...`| Prisma connection string (utama)   |
+| `DB_PASSWORD`      | `YourStrong!Passw0rd`      | Password SA untuk docker-compose   |
+| `DB_DATABASE`      | `BookstoreDB`              | Nama database                      |
+| `ADMIN_EMAIL`      | `admin@bookstore.com`      | Email admin awal (seeder)          |
+| `ADMIN_PASSWORD`   | `Admin@1234`               | Password admin awal (seeder)       |
 
 ---
 
-### 2. Start everything with Docker (production mode)
+## 🐳 Mode 1 — Semua via Docker (MSSQL + API)
+
+> Cocok untuk staging / production. Seluruh stack berjalan dalam container.
+
+**Prasyarat:** Docker Desktop berjalan.  
+Apple Silicon (M1/M2/M3) sudah dikonfigurasi dengan `platform: linux/amd64`.
+
+### Langkah
 
 ```bash
+# 1. Masuk ke folder proyek
+cd bookstore-api
+
+# 2. Buat file .env dari contoh
+cp .env.example .env
+
+# 3. Build dan jalankan semua service
 docker-compose up --build -d
+
+# 4. Cek status container
+docker-compose ps
 ```
 
-This will:
-1. Start **MSSQL 2022** on port `1433`
-2. Create the `BookstoreDB` database automatically
-3. Build and start the **NestJS API** on port `3000`
-4. Run TypeORM `synchronize: true` in dev/test (tables auto-created)
+Pastikan semua container berjalan:
+```
+NAME                    STATUS
+bookstore_mssql         Up (healthy)
+bookstore_mssql_init    Exited (0)    ← normal, selesai inisialisasi DB
+bookstore_api           Up
+```
 
----
+> **Otomatis:** Saat container `api` pertama kali start, entrypoint menjalankan
+> `prisma migrate deploy` sebelum aplikasi dimulai. Tidak perlu migrasi manual.
 
-### 3. Seed the admin user
+### Jalankan Seeder (opsional — buat admin user)
 
 ```bash
-# Install dependencies locally (needed only for seeder)
-npm install
-
-# Run the seeder (reads from .env)
+# Dari host (butuh DATABASE_URL di .env mengarah ke localhost)
 npm run seed
+
+# Atau jalankan di dalam container yang berjalan
+docker exec bookstore_api npx ts-node \
+  -r tsconfig-paths/register \
+  src/database/seeds/admin.seed.ts
 ```
 
-This creates:
-```
-Email:    admin@bookstore.com
-Password: Admin@1234
-Role:     admin
-```
+### Akses
 
----
+| Resource       | URL                                 |
+|---------------|-------------------------------------|
+| API Base      | http://localhost:3000/api/v1        |
+| Swagger Docs  | http://localhost:3000/api/v1/docs   |
 
-### 4. Open Swagger UI
-
-```
-http://localhost:3000/api/v1/docs
-```
-
-Use the **Authorize** button in Swagger to paste your JWT token.
-
----
-
-### Development mode (hot reload)
+### Stop
 
 ```bash
-npm install
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker-compose down          # stop container, pertahankan data
+docker-compose down -v       # stop + hapus volume (data hilang)
 ```
 
 ---
 
-## API Endpoints
+## 💻 Mode 2 — MSSQL Docker + NestJS Lokal
 
-Base URL: `http://localhost:3000/api/v1`
+> Cocok untuk development aktif — hot-reload, debugging lebih mudah.
 
-### Auth
+**Prasyarat:** Docker Desktop + Node.js v20+ + npm v10+
 
-| Method | Path | Access | Description |
-|--------|------|--------|-------------|
-| POST | `/auth/register` | Public | Register as customer |
-| POST | `/auth/login` | Public | Login, get JWT token |
+### Langkah
 
-### Authors
+**1. Jalankan hanya MSSQL via Docker:**
 
-| Method | Path | Customer | Admin |
-|--------|------|----------|-------|
-| GET | `/authors` | ✅ | ✅ |
-| GET | `/authors/:id` | ✅ | ✅ |
-| POST | `/authors` | ❌ | ✅ |
-| PATCH | `/authors/:id` | ❌ | ✅ |
-| DELETE | `/authors/:id` | ❌ | ✅ |
+```bash
+docker-compose -f docker-compose.mssql-only.yml up -d
+```
 
-### Books
+Tunggu MSSQL `healthy`:
+```bash
+docker ps
+# bookstore_mssql   Up X seconds (healthy)
+```
 
-| Method | Path | Customer | Admin |
-|--------|------|----------|-------|
-| GET | `/books` | ✅ | ✅ |
-| GET | `/books/:id` | ✅ | ✅ |
-| POST | `/books` | ❌ | ✅ |
-| PATCH | `/books/:id` | ❌ | ✅ |
-| DELETE | `/books/:id` | ❌ | ✅ |
+**2. Setup environment:**
 
-#### Book filtering (GET /books)
+```bash
+cp .env.example .env
+```
 
-| Query param | Type | Description |
-|-------------|------|-------------|
-| `authorId` | UUID | Filter by author |
-| `q` | string | Search in title (case-insensitive) |
-| `minPrice` | number | Minimum price |
-| `maxPrice` | number | Maximum price |
-| `page` | number | Page number (default: 1) |
-| `limit` | number | Items per page (default: 10, max: 100) |
+Pastikan `DATABASE_URL` di `.env` mengarah ke `localhost`:
+```dotenv
+DATABASE_URL="sqlserver://localhost:1433;database=BookstoreDB;user=sa;password=YourStrong!Passw0rd;trustServerCertificate=true;encrypt=false"
+```
+
+**3. Install dependencies:**
+
+```bash
+npm install --legacy-peer-deps
+```
+
+**4. Generate Prisma Client:**
+
+```bash
+npx prisma generate
+```
+
+**5. Jalankan migrasi database:**
+
+```bash
+# Pertama kali — buat migration file baru + apply:
+npx prisma migrate dev --name init
+
+# Selanjutnya — hanya apply migration yang belum dijalankan:
+npx prisma migrate deploy
+```
+
+**6. Jalankan seeder (buat admin user):**
+
+```bash
+npm run seed
+# 🎉  Admin user created: admin@bookstore.com
+```
+
+**7. Start NestJS (hot-reload):**
+
+```bash
+npm run start:dev
+```
+
+### Akses
+
+| Resource       | URL                                 |
+|---------------|-------------------------------------|
+| API Base      | http://localhost:3000/api/v1        |
+| Swagger Docs  | http://localhost:3000/api/v1/docs   |
+
+### Stop MSSQL
+
+```bash
+docker-compose -f docker-compose.mssql-only.yml down
+```
 
 ---
 
-## Error Response Format
+## 🗃️ Prisma — Perintah Berguna
 
-All errors return a consistent structure:
+| Perintah                                  | Fungsi                                   |
+|------------------------------------------|------------------------------------------|
+| `npx prisma generate`                    | Generate Prisma Client dari schema       |
+| `npx prisma migrate dev --name <nama>`   | Buat + apply migration baru (dev)        |
+| `npx prisma migrate deploy`              | Apply semua pending migration (prod)     |
+| `npx prisma migrate status`              | Lihat status migration                   |
+| `npx prisma db push`                     | Sync schema ke DB tanpa migration file   |
+| `npx prisma studio`                      | GUI browser untuk lihat/edit data        |
 
-```json
+Atau via npm scripts:
+
+```bash
+npm run prisma:generate   # npx prisma generate
+npm run migrate:dev       # npx prisma migrate dev
+npm run migrate:deploy    # npx prisma migrate deploy
+npm run db:push           # npx prisma db push
+```
+
+---
+
+## 🔐 Autentikasi
+
+API menggunakan **JWT Bearer Token**.
+
+### Register (customer)
+
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+
 {
-  "error": {
-    "code": "FORBIDDEN",
-    "message": "Admin role required"
-  }
+  "email": "user@example.com",
+  "password": "Password@123",
+  "fullName": "John Doe"
 }
 ```
 
-| HTTP | code | Trigger |
-|------|------|---------|
-| 400 | `VALIDATION_ERROR` | Invalid request body |
-| 401 | `UNAUTHORIZED` | Missing / invalid JWT |
-| 403 | `FORBIDDEN` | Insufficient role |
-| 404 | `NOT_FOUND` | Resource not found |
-| 409 | `CONFLICT` | Duplicate email / ISBN |
-| 500 | `INTERNAL_SERVER_ERROR` | Server error |
+### Login
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@bookstore.com",
+  "password": "Admin@1234"
+}
+```
+
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1...",
+  "tokenType": "Bearer",
+  "expiresIn": "1d",
+  "user": { "id": "...", "email": "...", "fullName": "...", "role": "admin" }
+}
+```
+
+### Menggunakan Token
+
+```http
+GET /api/v1/books
+Authorization: Bearer <accessToken>
+```
 
 ---
 
-## Environment Variables
+## 📖 API Endpoints
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_PORT` | `3000` | API port |
-| `NODE_ENV` | `development` | Environment |
-| `JWT_SECRET` | — | **Required** — min 32 chars |
-| `JWT_EXPIRES_IN` | `1d` | Token expiry |
-| `DB_HOST` | `localhost` | MSSQL host |
-| `DB_PORT` | `1433` | MSSQL port |
-| `DB_USERNAME` | `sa` | MSSQL user |
-| `DB_PASSWORD` | — | **Required** — MSSQL password |
-| `DB_DATABASE` | `BookstoreDB` | Database name |
-| `ADMIN_EMAIL` | `admin@bookstore.com` | Seed admin email |
-| `ADMIN_PASSWORD` | `Admin@1234` | Seed admin password |
-| `ADMIN_FULL_NAME` | `Super Admin` | Seed admin name |
+### Auth
+
+| Method | Path                    | Auth | Deskripsi           |
+|--------|-------------------------|------|---------------------|
+| POST   | `/api/v1/auth/register` | ❌   | Registrasi customer |
+| POST   | `/api/v1/auth/login`    | ❌   | Login, ambil JWT    |
+
+### Authors
+
+| Method | Path                  | Role  | Deskripsi         |
+|--------|-----------------------|-------|-------------------|
+| GET    | `/api/v1/authors`     | Any   | List semua author |
+| GET    | `/api/v1/authors/:id` | Any   | Detail author     |
+| POST   | `/api/v1/authors`     | Admin | Tambah author     |
+| PATCH  | `/api/v1/authors/:id` | Admin | Update author     |
+| DELETE | `/api/v1/authors/:id` | Admin | Hapus author      |
+
+### Books
+
+| Method | Path               | Role  | Deskripsi                       |
+|--------|--------------------|-------|---------------------------------|
+| GET    | `/api/v1/books`    | Any   | List buku (filter + pagination) |
+| GET    | `/api/v1/books/:id`| Any   | Detail buku                     |
+| POST   | `/api/v1/books`    | Admin | Tambah buku                     |
+| PATCH  | `/api/v1/books/:id`| Admin | Update buku                     |
+| DELETE | `/api/v1/books/:id`| Admin | Hapus buku                      |
+
+#### Query Params — GET `/api/v1/books`
+
+| Param      | Tipe   | Contoh               | Keterangan             |
+|-----------|--------|----------------------|------------------------|
+| `q`        | string | `?q=clean`           | Cari judul buku        |
+| `authorId` | UUID   | `?authorId=...`      | Filter by author       |
+| `minPrice` | number | `?minPrice=50000`    | Harga minimum          |
+| `maxPrice` | number | `?maxPrice=200000`   | Harga maksimum         |
+| `page`     | number | `?page=2`            | Halaman (default: 1)   |
+| `limit`    | number | `?limit=20`          | Per halaman (default: 10) |
 
 ---
 
-## Production Notes
+## 👤 Akun Default (Setelah Seeder)
 
-1. Set `NODE_ENV=production` — disables TypeORM `synchronize` and Swagger UI
-2. Use migrations instead of `synchronize`: `npm run typeorm migration:run`
-3. Change `JWT_SECRET` to a strong random value (≥ 32 chars)
-4. Change `DB_PASSWORD` to a strong password
-5. Set `encrypt: true` in `database.config.ts` if using Azure SQL
+| Field    | Value                 |
+|----------|-----------------------|
+| Email    | `admin@bookstore.com` |
+| Password | `Admin@1234`          |
+| Role     | `admin`               |
 
 ---
 
-## Scripts
+## 🛠️ npm Scripts
 
 ```bash
-npm run start:dev    # Development with hot reload
-npm run build        # Compile TypeScript
-npm run start:prod   # Run compiled dist/main
-npm run seed         # Seed admin user
-npm run lint         # ESLint
-npm run test         # Jest unit tests
-npm run test:cov     # Jest with coverage
+npm run start:dev       # Development dengan hot-reload
+npm run build           # Compile TypeScript ke dist/
+npm run start:prod      # Jalankan hasil build
+npm run seed            # Seeder admin user
+npm run prisma:generate # Generate Prisma client
+npm run migrate:dev     # Buat + apply migration (dev)
+npm run migrate:deploy  # Apply migration (prod)
+npm run lint            # ESLint
+npm run test            # Jest unit tests
 ```
-# Nur-Alimul-Haq---Permata-Backend
+
+---
+
+## 🐛 Troubleshooting
+
+**`npx prisma generate` gagal:**  
+Pastikan `DATABASE_URL` sudah diset di `.env` dan `prisma/schema.prisma` ada.
+
+**MSSQL tidak bisa dikoneksi:**  
+```bash
+docker ps                        # cek status container
+docker logs bookstore_mssql      # lihat log MSSQL
+```
+
+**Port 1433 sudah dipakai:**  
+Edit `docker-compose.mssql-only.yml` dan ubah port mapping, contoh: `"14330:1433"`.  
+Update `DATABASE_URL` dengan port baru.
+
+**Apple Silicon (M1/M2/M3) error:**  
+Docker Compose sudah pakai `platform: linux/amd64`. Pastikan Rosetta aktif di Docker Desktop → Settings → Features in development.
+
+**Swagger tidak muncul:**  
+Cek `SWAGGER_DISABLED` di `.env` — harus `false`.

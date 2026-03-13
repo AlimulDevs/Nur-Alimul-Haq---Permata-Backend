@@ -4,12 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { BooksRepository, PaginatedResult } from './books.repository';
+import {
+  BooksRepository,
+  BookWithAuthor,
+  PaginatedResult,
+} from './books.repository';
 import { AuthorsService } from '@/authors/authors.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { FilterBookDto } from './dto/filter-book.dto';
-import { Book } from './entities/book.entity';
 
 @Injectable()
 export class BooksService {
@@ -18,7 +21,7 @@ export class BooksService {
     private readonly authorsService: AuthorsService,
   ) {}
 
-  async findAll(filter: FilterBookDto): Promise<PaginatedResult<Book>> {
+  async findAll(filter: FilterBookDto): Promise<PaginatedResult<BookWithAuthor>> {
     // Validate authorId exists if provided
     if (filter.authorId) {
       await this.authorsService.findOne(filter.authorId);
@@ -26,7 +29,7 @@ export class BooksService {
     return this.booksRepository.findAll(filter);
   }
 
-  async findOne(id: string): Promise<Book> {
+  async findOne(id: string): Promise<BookWithAuthor> {
     const book = await this.booksRepository.findById(id);
     if (!book) {
       throw new NotFoundException({
@@ -39,7 +42,7 @@ export class BooksService {
     return book;
   }
 
-  async create(dto: CreateBookDto): Promise<Book> {
+  async create(dto: CreateBookDto): Promise<BookWithAuthor> {
     // Validate authorId references an existing author
     await this.authorsService.findOne(dto.authorId);
 
@@ -69,7 +72,7 @@ export class BooksService {
     return this.booksRepository.create(dto);
   }
 
-  async update(id: string, dto: UpdateBookDto): Promise<Book> {
+  async update(id: string, dto: UpdateBookDto): Promise<BookWithAuthor> {
     const book = await this.findOne(id);
 
     // If authorId is being changed, validate it exists

@@ -1,36 +1,15 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+/**
+ * Re-export Prisma-generated User type so the rest of the codebase can
+ * continue to import from this path without change.
+ */
+export { User } from '@prisma/client';
 
+/**
+ * UserRole mirrors the column values stored in the `role` varchar column.
+ * Prisma uses plain String for roles (MSSQL does not support enums).
+ * Application-level validation enforces only these two values.
+ */
 export enum UserRole {
   ADMIN = 'admin',
   CUSTOMER = 'customer',
-}
-
-@Entity('users')
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ unique: true, length: 255 })
-  email: string;
-
-  @Column({ length: 255 })
-  password: string;
-
-  @Column({ name: 'full_name', length: 255 })
-  fullName: string;
-
-  @Column({
-    type: 'varchar',
-    length: 20,
-    default: UserRole.CUSTOMER,
-  })
-  role: UserRole;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
 }
