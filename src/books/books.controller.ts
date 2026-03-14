@@ -25,6 +25,7 @@ import { FilterBookDto } from './dto/filter-book.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorators/roles.decorator';
+import { ResponseMessage } from '@/common/decorators/response-message.decorator';
 import { UserRole } from '@/users/entities/user.entity';
 
 @ApiTags('Books')
@@ -37,6 +38,7 @@ export class BooksController {
   // ─── Public (customer + admin) ────────────────────────────────────────────
 
   @Get()
+  @ResponseMessage('Data buku berhasil diambil')
   @ApiOperation({
     summary: 'List all books with optional filters + pagination',
     description:
@@ -48,6 +50,7 @@ export class BooksController {
   }
 
   @Get(':id')
+  @ResponseMessage('Detail buku berhasil diambil')
   @ApiOperation({ summary: 'Get a single book by ID' })
   @ApiResponse({ status: 200, description: 'Book found' })
   @ApiResponse({ status: 404, description: 'Book not found' })
@@ -60,6 +63,7 @@ export class BooksController {
   @Post()
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
+  @ResponseMessage('Buku berhasil dibuat')
   @ApiOperation({ summary: 'Create a new book [Admin only]' })
   @ApiResponse({ status: 201, description: 'Book created' })
   @ApiResponse({
@@ -79,6 +83,7 @@ export class BooksController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
+  @ResponseMessage('Buku berhasil diperbarui')
   @ApiOperation({ summary: 'Update a book [Admin only]' })
   @ApiResponse({ status: 200, description: 'Book updated' })
   @ApiResponse({ status: 404, description: 'Book or Author not found' })
@@ -91,9 +96,10 @@ export class BooksController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Buku berhasil dihapus')
   @ApiOperation({ summary: 'Delete a book [Admin only]' })
-  @ApiResponse({ status: 204, description: 'Book deleted' })
+  @ApiResponse({ status: 200, description: 'Book deleted' })
   @ApiResponse({ status: 404, description: 'Book not found' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.booksService.remove(id);

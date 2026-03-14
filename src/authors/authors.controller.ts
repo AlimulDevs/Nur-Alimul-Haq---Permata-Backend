@@ -23,6 +23,7 @@ import { UpdateAuthorDto } from './dto/update-author.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorators/roles.decorator';
+import { ResponseMessage } from '@/common/decorators/response-message.decorator';
 import { UserRole } from '@/users/entities/user.entity';
 
 @ApiTags('Authors')
@@ -35,6 +36,7 @@ export class AuthorsController {
   // ─── Public (customer + admin) ────────────────────────────────────────────
 
   @Get()
+  @ResponseMessage('Data author berhasil diambil')
   @ApiOperation({ summary: 'List all authors' })
   @ApiResponse({ status: 200, description: 'Array of authors' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -43,6 +45,7 @@ export class AuthorsController {
   }
 
   @Get(':id')
+  @ResponseMessage('Detail author berhasil diambil')
   @ApiOperation({ summary: 'Get a single author by ID' })
   @ApiResponse({ status: 200, description: 'Author found' })
   @ApiResponse({ status: 404, description: 'Author not found' })
@@ -55,6 +58,7 @@ export class AuthorsController {
   @Post()
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
+  @ResponseMessage('Author berhasil dibuat')
   @ApiOperation({ summary: 'Create a new author [Admin only]' })
   @ApiResponse({ status: 201, description: 'Author created' })
   @ApiResponse({ status: 403, description: 'Forbidden – admin role required' })
@@ -64,6 +68,7 @@ export class AuthorsController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
+  @ResponseMessage('Author berhasil diperbarui')
   @ApiOperation({ summary: 'Update an author [Admin only]' })
   @ApiResponse({ status: 200, description: 'Author updated' })
   @ApiResponse({ status: 404, description: 'Author not found' })
@@ -76,9 +81,10 @@ export class AuthorsController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Author berhasil dihapus')
   @ApiOperation({ summary: 'Delete an author [Admin only]' })
-  @ApiResponse({ status: 204, description: 'Author deleted' })
+  @ApiResponse({ status: 200, description: 'Author deleted' })
   @ApiResponse({ status: 404, description: 'Author not found' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.authorsService.remove(id);

@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from '@/common/decorators/public.decorator';
+import { ResponseMessage } from '@/common/decorators/response-message.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -13,6 +14,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @ResponseMessage('Registrasi berhasil')
   @ApiOperation({
     summary: 'Register a new customer account',
     description: 'Creates a new user with the CUSTOMER role.',
@@ -32,6 +34,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Login berhasil')
   @ApiOperation({ summary: 'Login and obtain JWT token' })
   @ApiResponse({
     status: 200,

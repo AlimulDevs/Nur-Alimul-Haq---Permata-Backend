@@ -18,15 +18,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let code = 'INTERNAL_SERVER_ERROR';
     let message = 'An unexpected error occurred';
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
-
-      // Map HTTP status to error code
-      code = this.mapStatusToCode(status);
 
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
@@ -35,11 +31,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
         exceptionResponse !== null
       ) {
         const exRes = exceptionResponse as Record<string, unknown>;
-        // class-validator returns { message: [...] }
-        if (Array.isArray(exRes.message)) {
-          message = (exRes.message as string[]).join('; ');
-        } else {
-          message = (exRes.message as string) ?? message;
+        // Services throw { error: { code, message } } — extract nested message
+        if (typeof exRes['error'] === 'object' && exRes['error'] !== null) {
+          const errObj = exRes['error'] as Record<string, unknown>;
+          message = (errObj['message'] as string) ?? message;
+        } else if (Array.isArray(exRes['message'])) {
+          // class-validator returns { message: string[] }
+          message = (exRes['message'] as string[]).join('; ');
+        } else if (typeof exRes['message'] === 'string') {
+          message = exRes['message'];
         }
       }
     } else if (exception instanceof Error) {
@@ -47,26 +47,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = exception.message;
     }
 
-    this.logger.warn(`[${request.method}] ${request.url} → ${status} ${code}`);
+    this.logger.warn(`[${request.method}] ${request.url} → ${status}`);
 
     response.status(status).json({
-      error: {
-        code,
-        message,
-      },
+      success: false,
+      message,
+      data: null,
     });
-  }
-
-  private mapStatusToCode(status: number): string {
-    const map: Record<number, string> = {
-      400: 'VALIDATION_ERROR',
-      401: 'UNAUTHORIZED',
-      403: 'FORBIDDEN',
-      404: 'NOT_FOUND',
-      409: 'CONFLICT',
-      422: 'UNPROCESSABLE_ENTITY',
-      500: 'INTERNAL_SERVER_ERROR',
-    };
-    return map[status] ?? 'UNKNOWN_ERROR';
   }
 }

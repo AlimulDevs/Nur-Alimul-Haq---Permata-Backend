@@ -6,6 +6,7 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -43,6 +44,9 @@ async function bootstrap() {
   // ── Global guards ──────────────────────────────────────────────────────────
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector));
+
+  // ── Global interceptors ────────────────────────────────────────────────────
+  app.useGlobalInterceptors(new ResponseInterceptor(reflector));
 
   // ── Swagger / OpenAPI ──────────────────────────────────────────────────────
   // Always enabled — disable only if SWAGGER_DISABLED=true
