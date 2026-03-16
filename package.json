@@ -79,6 +79,15 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "main\\.ts$",
+      "\\.module\\.ts$",
+      "database/seeds/",
+      "prisma\\.service\\.ts$",
+      "\\.repository\\.ts$",
+      "strategies/jwt\\.strategy\\.ts$"
+    ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {

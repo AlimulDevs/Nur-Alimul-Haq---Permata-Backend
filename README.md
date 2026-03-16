@@ -330,6 +330,73 @@ Authorization: Bearer <accessToken>
 
 ---
 
+## 🧪 Testing
+
+Unit test ditulis menggunakan **Jest** dan **@nestjs/testing**. Semua dependency eksternal (Prisma, bcrypt, JwtService, dll.) di-mock — **tidak perlu koneksi database** untuk menjalankan test.
+
+### Menjalankan Test
+
+```bash
+# Jalankan semua unit test
+npm test
+
+# Jalankan test dalam mode watch (re-run otomatis saat file berubah)
+npm run test:watch
+
+# Jalankan test + tampilkan laporan coverage
+npm run test:cov
+```
+
+### Melihat Hasil Coverage
+
+Setelah `npm run test:cov`, laporan HTML tersedia di:
+
+```
+coverage/lcov-report/index.html
+```
+
+Buka file tersebut di browser untuk melihat coverage per file secara detail.
+
+### Struktur File Test
+
+```
+src/
+├── auth/
+│   ├── auth.service.spec.ts          # register, login (sukses + error cases)
+│   └── auth.controller.spec.ts       # register, login endpoints
+├── authors/
+│   ├── authors.service.spec.ts       # findAll, findOne, create, update, remove
+│   └── authors.controller.spec.ts    # semua endpoint authors
+├── books/
+│   ├── books.service.spec.ts         # findAll (filter), findOne, create, update, remove
+│   └── books.controller.spec.ts      # semua endpoint books
+├── users/
+│   └── users.service.spec.ts         # findByEmail, findById, create, existsByEmail
+└── common/
+    ├── guards/
+    │   ├── jwt-auth.guard.spec.ts    # public route bypass, handleRequest
+    │   └── roles.guard.spec.ts       # ADMIN/CUSTOMER role enforcement
+    ├── filters/
+    │   └── http-exception.filter.spec.ts  # error response formatting
+    └── interceptors/
+        └── response.interceptor.spec.ts   # success response wrapping
+```
+
+### Coverage Target
+
+| Metric     | Result  |
+|------------|---------|
+| Statements | **~96%** |
+| Branches   | **~96%** |
+| Functions  | **~86%** |
+| Lines      | **~96%** |
+
+> File yang di-exclude dari coverage: `main.ts`, `*.module.ts`, `*.repository.ts`,
+> `prisma.service.ts`, `jwt.strategy.ts`, dan `database/seeds/` —
+> karena file-file tersebut membutuhkan koneksi database nyata dan bukan unit yang bisa di-mock secara langsung.
+
+---
+
 ## 🛠️ npm Scripts
 
 ```bash
@@ -341,7 +408,9 @@ npm run prisma:generate # Generate Prisma client
 npm run migrate:dev     # Buat + apply migration (dev)
 npm run migrate:deploy  # Apply migration (prod)
 npm run lint            # ESLint
-npm run test            # Jest unit tests
+npm run test            # Jalankan unit test
+npm run test:watch      # Unit test mode watch
+npm run test:cov        # Unit test + laporan coverage
 ```
 
 ---
